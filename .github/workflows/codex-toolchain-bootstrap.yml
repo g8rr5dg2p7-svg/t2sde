@@ -65,12 +65,14 @@ jobs:
       - name: Build full selected toolchain
         run: |
           set -euo pipefail
-          scripts/Build-Target -cfg codex-lto-toolchain
+          sudo env PATH="$PATH" GITHUB_WORKSPACE="$GITHUB_WORKSPACE" \
+            bash -lc 'cd "$GITHUB_WORKSPACE" && scripts/Build-Target -cfg codex-lto-toolchain'
 
       - name: Summarize build logs
         if: always()
         run: |
           set +e
+          sudo chown -R "$USER:$USER" build config src 2>/dev/null || true
           find build -path '*/var/adm/logs/*' -type f | sort | tail -n 80
           find build -path '*/var/adm/logs/*.err' -type f -print -exec tail -n 80 {} \;
 
