@@ -1,0 +1,85 @@
+name: Codex toolchain bootstrap check
+
+on:
+  push:
+    branches:
+      - codex/t2sde-bootstrap-check
+  workflow_dispatch:
+
+jobs:
+  toolchain-bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bash bc binutils bison build-essential bzip2 cpio curl diffutils \
+            file findutils flex gawk grep gzip libncurses-dev libtool-bin make \
+            patch sed tar texinfo util-linux xz-utils zstd
+
+      - name: Add ExactBuild support files used by luabash
+        run: |
+          set -euo pipefail
+          mkdir -p misc/luabash/build
+          curl -fsSL https://svn.exactcode.de/exact-build/trunk/build/top.make \
+            -o misc/luabash/build/top.make
+          curl -fsSL https://svn.exactcode.de/exact-build/trunk/build/bottom.make \
+            -o misc/luabash/build/bottom.make
+          curl -fsSL https://svn.exactcode.de/exact-build/trunk/build/Linux.make \
+            -o misc/luabash/build/Linux.make
+
+      - name: Create LTO toolchain config
+        run: |
+          set -euo pipefail
+          cfg=codex-lto-toolchain
+          mkdir -p "config/$cfg"
+          cat > "config/$cfg/config" <<'EOF'
+          export SDECFG_TARGET='generic'
+          export SDECFG_ARCH='x86-64'
+          export SDECFG_KERNEL='linux'
+          export SDECFG_PKGSEL_TMPL='toolchain'
+          export SDECFG_LTO='1'
+          export SDECFG_USE_CROSSCC='1'
+          export SDECFG_TMPFS='0'
+          export SDECFG_PARALLEL='2'
+          export SDECFG_EXPERT='1'
+          EOF
+          : > "config/$cfg/packages"
+          scripts/Config -cfg "$cfg" -oldconfig
+          scripts/Config -cfg "$cfg" \
+            PKGSEL_TMPL=toolchain \
+            LTO=1 \
+            USE_CROSSCC=1 \
+            TMPFS=0 \
+            PARALLEL=2 \
+            EXPERT=1
+          scripts/Config -cfg "$cfg" -oldconfig
+          scripts/Config -cfg "$cfg" TARGET ARCH KERNEL PKGSEL_TMPL LTO USE_CROSSCC TMPFS PARALLEL EXPERT
+          grep '^X 0' "config/$cfg/packages" | sed -n '1,120p'
+
+      - name: Build full selected toolchain
+        run: |
+          set -euo pipefail
+          scripts/Build-Target -cfg codex-lto-toolchain
+
+      - name: Summarize build logs
+        if: always()
+        run: |
+          set +e
+          find build -path '*/var/adm/logs/*' -type f | sort | tail -n 80
+          find build -path '*/var/adm/logs/*.err' -type f -print -exec tail -n 80 {} \;
+
+      - name: Upload T2 logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t2-toolchain-logs
+          path: |
+            build/**/var/adm/logs/**
+            build/**/TOOLCHAIN/logs/**
+          if-no-files-found: ignore
