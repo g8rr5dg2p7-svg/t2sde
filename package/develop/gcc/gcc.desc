@@ -94,11 +94,12 @@ if [ $stagelevel -le 1 ]; then
 	fi
 
 	# we need to help configure pick up our native libraries in the toolchain dir
-	var_append confopt ' ' '--with-mpfr=$toolsroot --with-mpfr-lib=$toolsroot/lib'
-	var_append confopt ' ' '--with-ppl=$toolsroot --with-cloog=$toolsroot --with-gmp=$toolsroot'
+	toolsusr="$toolsroot/usr"
+	var_append confopt ' ' "--with-mpfr=$toolsusr --with-mpfr-lib=$toolsusr/lib"
+	var_append confopt ' ' "--with-ppl=$toolsusr --with-cloog=$toolsusr --with-gmp=$toolsusr --with-mpc=$toolsusr"
 	var_append confopt ' ' --disable-libsanitizer
 	pkginstalled isl && var_append confopt ' ' --with-isl=$toolsroot
-	unset toolsroot
+	unset toolsusr toolsroot
 fi
 
 if ! atstage toolchain; then
