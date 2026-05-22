@@ -77,17 +77,38 @@ jobs:
       - name: Summarize build logs
         if: always()
         run: |
-          set +e
-          sudo chown -R "$USER:$USER" build config src 2>/dev/null || true
-          find build -path '*/var/adm/logs/*' -type f | sort | tail -n 80
-          find build -path '*/var/adm/logs/*.err' -type f -print -exec tail -n 80 {} \;
+          set -uo pipefail
+          mkdir -p .codex-t2-logs
+          mapfile -t logs < <(
+            find -P build \
+              \( -path '*/proc' -o -path '*/dev' -o -path '*/sys' -o -path '*/TOOLCHAIN/loop' \) -prune -o \
+              -path '*/var/adm/logs/*' -type f -print 2>/dev/null | sort
+          )
+          if ((${#logs[@]} == 0)); then
+            echo "No T2 logs found."
+            exit 0
+          fi
+          printf '%s\n' "${logs[@]}" | tail -n 80
+          for log in "${logs[@]}"; do
+            dest=".codex-t2-logs/${log#build/}"
+            mkdir -p "$(dirname "$dest")"
+            sudo cp "$log" "$dest" 2>/dev/null || cp "$log" "$dest" 2>/dev/null || true
+            sudo chown "$USER:$USER" "$dest" 2>/dev/null || true
+          done
+          for err in "${logs[@]}"; do
+            case "$err" in
+              *.err)
+                err_dest=".codex-t2-logs/${err#build/}"
+                echo "===== $err ====="
+                tail -n 120 "$err_dest" || true
+                ;;
+            esac
+          done
 
       - name: Upload T2 logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: t2-toolchain-logs
-          path: |
-            build/**/var/adm/logs/**
-            build/**/TOOLCHAIN/logs/**
+          path: .codex-t2-logs/**
           if-no-files-found: ignore
