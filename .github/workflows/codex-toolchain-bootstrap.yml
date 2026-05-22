@@ -1,4 +1,4 @@
-name: Codex toolchain bootstrap check
+name: Codex LTO bootstrap check
 
 on:
   push:
@@ -33,16 +33,16 @@ jobs:
           curl -fsSL https://svn.exactcode.de/exact-build/trunk/build/Linux.make \
             -o misc/luabash/build/Linux.make
 
-      - name: Create LTO toolchain config
+      - name: Create LTO bootstrap config
         run: |
           set -euo pipefail
-          cfg=codex-lto-toolchain
+          cfg=codex-lto-bootstrap
           mkdir -p "config/$cfg"
           cat > "config/$cfg/config" <<'EOF'
           export SDECFG_TARGET='generic'
           export SDECFG_ARCH='x86-64'
           export SDECFG_KERNEL='linux'
-          export SDECFG_PKGSEL_TMPL='toolchain'
+          export SDECFG_PKGSEL_TMPL='bootstrap'
           export SDECFG_LTO='1'
           export SDECFG_USE_CROSSCC='1'
           export SDECFG_TMPFS='0'
@@ -52,7 +52,7 @@ jobs:
           : > "config/$cfg/packages"
           scripts/Config -cfg "$cfg" -oldconfig
           scripts/Config -cfg "$cfg" \
-            PKGSEL_TMPL=toolchain \
+            PKGSEL_TMPL=bootstrap \
             LTO=1 \
             USE_CROSSCC=1 \
             TMPFS=0 \
@@ -60,25 +60,25 @@ jobs:
             EXPERT=1
           scripts/Config -cfg "$cfg" -oldconfig
           scripts/Config -cfg "$cfg" TARGET ARCH KERNEL PKGSEL_TMPL LTO USE_CROSSCC TMPFS PARALLEL EXPERT
-          grep '^X 0' "config/$cfg/packages" | sed -n '1,120p'
+          grep '^X ' "config/$cfg/packages" | sed -n '1,200p'
 
-      - name: Build full selected toolchain
+      - name: Build full selected bootstrap
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/.codex-root-home"/{cargo,rustup}
-          sudo env \
+          timeout --foreground 330m sudo env \
             HOME="$GITHUB_WORKSPACE/.codex-root-home" \
             CARGO_HOME="$GITHUB_WORKSPACE/.codex-root-home/cargo" \
             RUSTUP_HOME="$GITHUB_WORKSPACE/.codex-root-home/rustup" \
             PATH="$PATH" \
             GITHUB_WORKSPACE="$GITHUB_WORKSPACE" \
-            bash -lc 'cd "$GITHUB_WORKSPACE" && scripts/Build-Target -cfg codex-lto-toolchain'
+            bash -lc 'cd "$GITHUB_WORKSPACE" && scripts/Build-Target -cfg codex-lto-bootstrap'
 
       - name: Summarize build logs
         if: always()
         run: |
           set -uo pipefail
-          mkdir -p .codex-t2-logs
+          mkdir -p codex-t2-logs
           mapfile -t logs < <(
             find -P build \
               \( -path '*/proc' -o -path '*/dev' -o -path '*/sys' -o -path '*/TOOLCHAIN/loop' \) -prune -o \
@@ -90,15 +90,16 @@ jobs:
           fi
           printf '%s\n' "${logs[@]}" | tail -n 80
           for log in "${logs[@]}"; do
-            dest=".codex-t2-logs/${log#build/}"
+            dest="codex-t2-logs/${log#build/}"
             mkdir -p "$(dirname "$dest")"
             sudo cp "$log" "$dest" 2>/dev/null || cp "$log" "$dest" 2>/dev/null || true
             sudo chown "$USER:$USER" "$dest" 2>/dev/null || true
           done
+          find codex-t2-logs -type f | sort | sed -n '1,120p'
           for err in "${logs[@]}"; do
             case "$err" in
               *.err)
-                err_dest=".codex-t2-logs/${err#build/}"
+                err_dest="codex-t2-logs/${err#build/}"
                 echo "===== $err ====="
                 tail -n 120 "$err_dest" || true
                 ;;
@@ -110,5 +111,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: t2-toolchain-logs
-          path: .codex-t2-logs/**
+          path: codex-t2-logs/**
           if-no-files-found: ignore
