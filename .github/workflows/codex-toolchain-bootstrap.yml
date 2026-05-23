@@ -19,12 +19,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             bash bc binutils bison build-essential bzip2 cpio curl diffutils \
-            file findutils flex gawk gcc-14 g++-14 gettext grep gzip libncurses-dev libtool-bin lzip make \
+            file findutils flex gawk gcc-14 g++-14 gettext grep gzip libncurses-dev libtool-bin lzip make python3-pip \
             meson ninja-build patch pkgconf sed tar texinfo util-linux xz-utils zstd
+          sudo python3 -m pip install --break-system-packages --upgrade 'meson>=1.4.0,<2.0'
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 140
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 140
           sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 140
           sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-14 140
+          meson --version
           gcc --version
 
       - name: Add ExactBuild support files used by luabash
