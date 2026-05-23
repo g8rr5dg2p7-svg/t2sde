@@ -19,7 +19,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             bash bc binutils bison build-essential bzip2 cpio curl diffutils \
-            file findutils flex gawk gcc-14 g++-14 gettext grep gzip libncurses-dev libtool-bin make \
+            file findutils flex gawk gcc-14 g++-14 gettext grep gzip libncurses-dev libtool-bin lzip make \
             patch sed tar texinfo util-linux xz-utils zstd
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 140
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 140
