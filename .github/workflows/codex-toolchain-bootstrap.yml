@@ -19,8 +19,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             bash bc binutils bison build-essential bzip2 cpio curl diffutils \
-            file findutils flex gawk gettext grep gzip libncurses-dev libtool-bin make \
+            file findutils flex gawk gcc-14 g++-14 gettext grep gzip libncurses-dev libtool-bin make \
             patch sed tar texinfo util-linux xz-utils zstd
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 140
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 140
+          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 140
+          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-14 140
+          gcc --version
 
       - name: Add ExactBuild support files used by luabash
         run: |
