@@ -72,7 +72,20 @@ jobs:
             RUSTUP_HOME="$GITHUB_WORKSPACE/.codex-root-home/rustup" \
             PATH="$PATH" \
             GITHUB_WORKSPACE="$GITHUB_WORKSPACE" \
-            bash -lc 'cd "$GITHUB_WORKSPACE" && scripts/Build-Target -cfg codex-lto-bootstrap'
+            bash -lc 'cd "$GITHUB_WORKSPACE" && scripts/Build-Target -cfg codex-lto-bootstrap' &
+          build_pid=$!
+          while kill -0 "$build_pid" 2>/dev/null; do
+            if sudo find -P build -path '*/var/adm/logs/*.err' -type f -print -quit 2>/dev/null | grep -q .; then
+              echo "Detected package error log; stopping bootstrap so diagnostics upload immediately."
+              kill -TERM "$build_pid" 2>/dev/null || true
+              sleep 10
+              kill -KILL "$build_pid" 2>/dev/null || true
+              wait "$build_pid" || true
+              exit 1
+            fi
+            sleep 30
+          done
+          wait "$build_pid"
 
       - name: Summarize build logs
         if: always()
@@ -84,13 +97,20 @@ jobs:
               \( -path '*/proc' -o -path '*/dev' -o -path '*/sys' -o -path '*/TOOLCHAIN/loop' \) -prune -o \
               -path '*/var/adm/logs/*' -type f -print 2>/dev/null | sort
           )
+          mapfile -t config_logs < <(
+            find -P . \
+              \( -path './build/*/proc' -o -path './build/*/dev' -o -path './build/*/sys' -o -path './build/*/TOOLCHAIN/loop' \) -prune -o \
+              -path './src.*/*/config.log' -type f -print 2>/dev/null | sort
+          )
+          logs+=("${config_logs[@]}")
           if ((${#logs[@]} == 0)); then
             echo "No T2 logs found."
             exit 0
           fi
           printf '%s\n' "${logs[@]}" | tail -n 80
           for log in "${logs[@]}"; do
-            dest="codex-t2-logs/${log#build/}"
+            dest="codex-t2-logs/${log#./}"
+            dest="codex-t2-logs/${dest#build/}"
             mkdir -p "$(dirname "$dest")"
             sudo cp "$log" "$dest" 2>/dev/null || cp "$log" "$dest" 2>/dev/null || true
             sudo chown "$USER:$USER" "$dest" 2>/dev/null || true
