@@ -26,6 +26,9 @@ jobs:
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 140
           sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 140
           sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-14 140
+          sudo rm -f \
+            /usr/bin/ncurses5-config /usr/bin/ncurses6-config \
+            /usr/bin/ncursesw5-config /usr/bin/ncursesw6-config
           meson --version
           gcc --version
 
