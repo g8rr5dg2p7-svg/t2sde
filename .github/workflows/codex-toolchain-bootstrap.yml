@@ -58,6 +58,7 @@ jobs:
           export SDECFG_TMPFS='0'
           export SDECFG_PARALLEL='2'
           export SDECFG_EXPERT='1'
+          export SDECFG_IMAGE='none'
           EOF
           sed -i 's/^#X perl$/X perl/' target/generic/pkgsel/10-bootstrap.in
           : > "config/$cfg/packages"
@@ -68,8 +69,38 @@ jobs:
             USE_CROSSCC=1 \
             TMPFS=0 \
             PARALLEL=2 \
-            EXPERT=1
+            EXPERT=1 \
+            IMAGE=none
           scripts/Config -cfg "$cfg" -oldconfig
+          select_pkg() {
+            local pkg="$1"
+            if sed -i -E "s/^O([[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+$pkg[[:space:]])/X\\1/" "config/$cfg/packages"; then
+              :
+            fi
+            grep -Eq "^X[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+$pkg[[:space:]]" "config/$cfg/packages"
+          }
+          selected_pkg_names() {
+            awk '$1 == "X" { print $5 }' "config/$cfg/packages" | sort -u
+          }
+          for pass in $(seq 1 12); do
+            changed=0
+            while read -r pkg; do
+              cache="$(find package -mindepth 3 -maxdepth 3 -path "*/$pkg/$pkg.cache" -print -quit)"
+              [ -n "$cache" ] || continue
+              while read -r dep; do
+                [ -n "$dep" ] || continue
+                if grep -Eq "^O[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+$dep[[:space:]]" "config/$cfg/packages"; then
+                  select_pkg "$dep"
+                  changed=1
+                fi
+              done < <(sed -n 's/^\[DEP\][[:space:]]\+//p' "$cache")
+            done < <(selected_pkg_names)
+            [ "$changed" = 1 ] || break
+            if [ "$pass" = 12 ]; then
+              echo "Dependency closure did not settle after $pass passes."
+              exit 1
+            fi
+          done
           scripts/Config -cfg "$cfg" MULTILIB=0
           sed -i -E 's/^X([[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+base[[:space:]]+glibc32[[:space:]])/O\1/' "config/$cfg/packages"
           if grep -Eq '^X[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+base[[:space:]]+glibc32[[:space:]]' "config/$cfg/packages"; then
@@ -77,6 +108,7 @@ jobs:
             exit 1
           fi
           scripts/Config -cfg "$cfg" TARGET ARCH KERNEL PKGSEL_TMPL LTO USE_CROSSCC TMPFS PARALLEL EXPERT
+          scripts/Config -cfg "$cfg" IMAGE
           scripts/Config -cfg "$cfg" MULTILIB
           grep '^X ' "config/$cfg/packages" | sed -n '1,200p'
 
@@ -104,6 +136,11 @@ jobs:
             sleep 30
           done
           wait "$build_pid"
+          if sudo find -P build -path '*/var/adm/logs/*.err' -type f -print -quit 2>/dev/null | grep -q .; then
+            echo "Bootstrap completed with package error logs; failing proof run."
+            sudo find -P build -path '*/var/adm/logs/*.err' -type f -print 2>/dev/null | sort
+            exit 1
+          fi
 
       - name: Summarize build logs
         if: always()
