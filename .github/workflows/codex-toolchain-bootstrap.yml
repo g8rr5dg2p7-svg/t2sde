@@ -71,7 +71,11 @@ jobs:
             EXPERT=1
           scripts/Config -cfg "$cfg" -oldconfig
           scripts/Config -cfg "$cfg" MULTILIB=0
-          sed -i -E 's/^X ([^ ]+ [^ ]+ [^ ]+ base glibc32 )/O \1/' "config/$cfg/packages"
+          sed -i -E 's/^X([[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+base[[:space:]]+glibc32[[:space:]])/O\1/' "config/$cfg/packages"
+          if grep -Eq '^X[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+base[[:space:]]+glibc32[[:space:]]' "config/$cfg/packages"; then
+            echo "glibc32 is still selected after MULTILIB=0; refusing to start a long proof run."
+            exit 1
+          fi
           scripts/Config -cfg "$cfg" TARGET ARCH KERNEL PKGSEL_TMPL LTO USE_CROSSCC TMPFS PARALLEL EXPERT
           scripts/Config -cfg "$cfg" MULTILIB
           grep '^X ' "config/$cfg/packages" | sed -n '1,200p'
