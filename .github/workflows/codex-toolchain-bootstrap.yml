@@ -59,6 +59,7 @@ jobs:
           export SDECFG_PARALLEL='2'
           export SDECFG_EXPERT='1'
           EOF
+          sed -i 's/^#X perl$/X perl/' target/generic/pkgsel/10-bootstrap.in
           : > "config/$cfg/packages"
           scripts/Config -cfg "$cfg" -oldconfig
           scripts/Config -cfg "$cfg" \
@@ -69,7 +70,10 @@ jobs:
             PARALLEL=2 \
             EXPERT=1
           scripts/Config -cfg "$cfg" -oldconfig
+          scripts/Config -cfg "$cfg" MULTILIB=0
+          sed -i -E 's/^X ([^ ]+ [^ ]+ [^ ]+ base glibc32 )/O \1/' "config/$cfg/packages"
           scripts/Config -cfg "$cfg" TARGET ARCH KERNEL PKGSEL_TMPL LTO USE_CROSSCC TMPFS PARALLEL EXPERT
+          scripts/Config -cfg "$cfg" MULTILIB
           grep '^X ' "config/$cfg/packages" | sed -n '1,200p'
 
       - name: Build full selected bootstrap
@@ -119,8 +123,9 @@ jobs:
           fi
           printf '%s\n' "${logs[@]}" | tail -n 80
           for log in "${logs[@]}"; do
-            dest="codex-t2-logs/${log#./}"
-            dest="codex-t2-logs/${dest#build/}"
+            rel="${log#./}"
+            rel="${rel#build/}"
+            dest="codex-t2-logs/$rel"
             mkdir -p "$(dirname "$dest")"
             sudo cp "$log" "$dest" 2>/dev/null || cp "$log" "$dest" 2>/dev/null || true
             sudo chown "$USER:$USER" "$dest" 2>/dev/null || true
@@ -129,7 +134,9 @@ jobs:
           for err in "${logs[@]}"; do
             case "$err" in
               *.err)
-                err_dest="codex-t2-logs/${err#build/}"
+                rel="${err#./}"
+                rel="${rel#build/}"
+                err_dest="codex-t2-logs/$rel"
                 echo "===== $err ====="
                 tail -n 120 "$err_dest" || true
                 ;;
