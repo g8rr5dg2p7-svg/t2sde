@@ -20,6 +20,17 @@ chmod: cannot access '/usr/lib64/libhistory.so.8.3': No such file or directory
  
  # pre-install
  
+@@ -51,6 +51,6 @@
+ if [ -z "$uninstall" ]; then
+-	${echo} $RM ${INSTALLDIR}/${LIBNAME}.${OLDSUFF}
+-	if [ -f "$INSTALLDIR/$LIBNAME" ]; then
+-		${echo} $MV $INSTALLDIR/$LIBNAME ${INSTALLDIR}/${LIBNAME}.${OLDSUFF}
+-	fi
++	#${echo} $RM ${INSTALLDIR}/${LIBNAME}.${OLDSUFF}
++	#if [ -f "$INSTALLDIR/$LIBNAME" ]; then
++	#	${echo} $MV $INSTALLDIR/$LIBNAME ${INSTALLDIR}/${LIBNAME}.${OLDSUFF}
++	#fi
+ fi
 @@ -120,13 +120,13 @@
  case "$host_os-$host_vendor" in
  *linux*|freebsd*|dragonfly*)

@@ -63,6 +63,8 @@ X gettext
 X grep
 X gzip
 X bzip2
+X xz
+X lzip
 X zstd
 X unzip
 X keyutils
