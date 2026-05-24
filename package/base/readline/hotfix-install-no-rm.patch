@@ -4,14 +4,9 @@
 # SPDX-License-Identifier: GPL-2.0 or patched project license
 # --- T2-COPYRIGHT-END ---
 
-/bin/sh ../support/shlib-install -O linux-gnu -V t2 -d /usr/lib64 -b /usr/bin -i "/usr/src/t2-src/build/default-25-svn-generic-
-x86-64-nocona-linux/TOOLCHAIN/native/wrapper/install -c -m 644" libhistory.so.8.3
-bash: error while loading shared libraries: libhistory.so.8: cannot open shared object file: No such file or directory
-chmod: cannot access '/usr/lib64/libhistory.so.8.3': No such file or directory
-
 --- readline-8.3/support/shlib-install.vanilla	2026-02-07 13:14:29.787069396 +0100
 +++ readline-8.3/support/shlib-install	2026-02-07 13:22:05.086581272 +0100
-@@ -44,7 +44,7 @@
+@@ -44,13 +44,14 @@
  OLDSUFF=old
  MV=mv
  RM="rm -f"
@@ -20,7 +15,6 @@ chmod: cannot access '/usr/lib64/libhistory.so.8.3': No such file or directory
  
  # pre-install
  
-@@ -51,6 +51,6 @@
  if [ -z "$uninstall" ]; then
 -	${echo} $RM ${INSTALLDIR}/${LIBNAME}.${OLDSUFF}
 -	if [ -f "$INSTALLDIR/$LIBNAME" ]; then
@@ -30,6 +24,7 @@ chmod: cannot access '/usr/lib64/libhistory.so.8.3': No such file or directory
 +	#if [ -f "$INSTALLDIR/$LIBNAME" ]; then
 +	#	${echo} $MV $INSTALLDIR/$LIBNAME ${INSTALLDIR}/${LIBNAME}.${OLDSUFF}
 +	#fi
++	:
  fi
 @@ -120,13 +120,13 @@
  case "$host_os-$host_vendor" in
