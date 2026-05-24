@@ -91,10 +91,14 @@ var_append cmakeopt ' ' -DLLVM_ENABLE_TERMINFO=OFF
 var_append cmakeopt ' ' -DLLVM_ENABLE_BACKTRACES=OFF
 
 if pkginstalled binutils; then
-    [ $stagelevel -gt 1 ] &&
-	var_append cmakeopt ' ' -DLLVM_BINUTILS_INCDIR=$root/usr/include
-    atstage toolchain &&
-	var_append cmakeopt ' ' -DLLVM_BINUTILS_INCDIR=$root/TOOLCHAIN/cross/usr/$arch_build/$arch_target/include
+	[ $stagelevel -gt 1 ] &&
+		var_append cmakeopt ' ' -DLLVM_BINUTILS_INCDIR=$root/usr/include
+	if atstage toolchain; then
+		llvm_binutils_incdir=$root/usr/$arch_build/$arch_target/include
+		[ -d "$llvm_binutils_incdir" ] ||
+			llvm_binutils_incdir=$root/TOOLCHAIN/cross/usr/$arch_build/$arch_target/include
+		var_append cmakeopt ' ' -DLLVM_BINUTILS_INCDIR=$llvm_binutils_incdir
+	fi
 fi
 
 var_append cmakeopt ' ' "-DLLVM_ENABLE_RTTI=ON" # for Mesa?
